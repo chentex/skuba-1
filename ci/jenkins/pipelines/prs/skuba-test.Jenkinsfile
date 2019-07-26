@@ -18,9 +18,6 @@ pipeline {
     }
 
     stages {
-        stage('Setting GitHub in-progress status') { steps {
-            sh(script: "${PR_MANAGER} update-pr-status ${GIT_COMMIT} ${PR_CONTEXT} 'pending'", label: "Sending pending status")
-        } }
 
         stage('Git Clone') { steps {
             deleteDir()
@@ -33,31 +30,14 @@ pipeline {
                       submoduleCfg: [],
                       userRemoteConfigs: [[refspec: '+refs/pull/*/head:refs/remotes/origin/PR-*',
                                            credentialsId: 'github-token',
-                                           url: 'https://github.com/SUSE/skuba']]])
+                                           url: 'https://github.com/chentex/skuba-1']]])
 
             dir("${WORKSPACE}/skuba") {
                 sh(script: "git checkout ${BRANCH_NAME}", label: "Checkout PR Branch")
             }
         }}
 
-        stage('Run skuba unit tests') { steps {
-            dir("skuba") {
-              sh(script: 'make test-unit', label: 'make test-unit')
-            }
-        } }
-
-        stage('Getting Ready For Cluster Deployment') { steps {
-            sh(script: 'make -f skuba/ci/Makefile pre_deployment', label: 'Pre Deployment')
-            sh(script: 'make -f skuba/ci/Makefile pr_checks', label: 'PR Checks')
-        } }
-
-        stage('Cluster Deployment') { steps {
-            sh(script: 'make -f skuba/ci/Makefile deploy', label: 'Deploy')
-            archiveArtifacts("skuba/ci/infra/${PLATFORM}/terraform.tfstate")
-            archiveArtifacts("skuba/ci/infra/${PLATFORM}/terraform.tfvars.json")
-        } }
-
-        stage('Run end-to-end tests') { steps {
+       stage('Run end-to-end tests') { steps {
            dir("skuba") {
              sh(script: 'make build-ginkgo', label: 'build ginkgo binary')
              sh(script: "make setup-ssh && SKUBA_BIN_PATH=\"${WORKSPACE}/go/bin/skuba\" GINKGO_BIN_PATH=\"${WORKSPACE}/skuba/ginkgo\" IP_FROM_TF_STATE=TRUE make test-e2e", label: "End-to-end tests")
